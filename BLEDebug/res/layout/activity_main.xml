@@ -8,7 +8,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="BLE Devices"
+        android:text="Devices"
         android:textAppearance="?android:attr/textAppearanceSmall" />
 
     <ListView
@@ -16,14 +16,14 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_margin="1dp"
-        android:layout_weight="1"
+        android:layout_weight="0.8"
         android:background="@drawable/shap_border" >
     </ListView>
 
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="UUIDS"
+        android:text="Services &amp; Characteristics"
         android:textAppearance="?android:attr/textAppearanceSmall" />
 
     <ListView
@@ -37,9 +37,46 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1"
-        android:orientation="vertical" >
+        android:layout_height="wrap_content"
+        android:layout_margin="1dp"
+        android:background="@drawable/shap_border"
+        android:orientation="horizontal" >
+
+        <EditText
+            android:id="@+id/et_send"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@null"
+            android:padding="2dp"
+            android:text="AA 01" >
+        </EditText>
+
+        <Button
+            android:id="@+id/btn_send"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Send" />
+
+        <Button
+            android:id="@+id/btn_read"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Read" />
     </LinearLayout>
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_margin="1dp"
+        android:layout_weight="0.5"
+        android:background="@drawable/shap_border" >
+
+        <TextView
+            android:id="@+id/tv_log"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAppearance="?android:attr/textAppearanceSmall" />
+    </ScrollView>
 
 </LinearLayout>
