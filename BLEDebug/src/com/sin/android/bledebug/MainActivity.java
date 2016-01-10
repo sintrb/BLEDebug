@@ -10,6 +10,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Context;
@@ -63,6 +64,10 @@ public class MainActivity extends BaseActivity {
 			sb.append(String.format(Locale.getDefault(), "%02x", bts[i]));
 		}
 		return sb.toString();
+	}
+
+	String bytesDecode(byte[] bts) {
+		return bts != null ? new String(bts) : "null";
 	}
 
 	@Override
@@ -136,6 +141,13 @@ public class MainActivity extends BaseActivity {
 					curUUID = uuids.get(pos);
 					uuidsAdapter.notifyDataSetChanged();
 
+					if (curUUID.tag instanceof BluetoothGattService) {
+						BluetoothGattService gattService = (BluetoothGattService) curUUID.tag;
+						// gattService.
+						// AddLog("Read %s: %s", ok ? "ok" : "fail",
+						// bytes2String(bts) + (bts != null ? "(" +
+						// bytesDecode(bts) + ")" : ""));
+					}
 				}
 			}
 		});
@@ -176,10 +188,18 @@ public class MainActivity extends BaseActivity {
 					if (curUUID.tag instanceof BluetoothGattCharacteristic) {
 						BluetoothGattCharacteristic gattCharacteristic = (BluetoothGattCharacteristic) curUUID.tag;
 						ok = gattCharacteristic.setValue(bts);
-						if (ok)
-							bluetoothGatt.writeCharacteristic(gattCharacteristic);
-						AddLog("Send %s: %s", ok ? "ok" : "fail", bytes2String(bts));
+						ok = bluetoothGatt.writeCharacteristic(gattCharacteristic) && ok;
+						AddLog("Send C %s: %s", ok ? "ok" : "fail", bytes2String(bts));
+					} else if (curUUID.tag instanceof BluetoothGattDescriptor) {
+						BluetoothGattDescriptor gattDescriptor = (BluetoothGattDescriptor) curUUID.tag;
+						ok = gattDescriptor.setValue(bts);
+						ok = bluetoothGatt.writeDescriptor(gattDescriptor) && ok;
+						AddLog("Send D %s: %s", ok ? "ok" : "fail", bytes2String(bts));
 					}
+//					if (!ok)
+//						bluetoothGatt.abortReliableWrite();
+//					else
+//						bluetoothGatt.beginReliableWrite();
 				}
 			}
 		});
@@ -199,9 +219,13 @@ public class MainActivity extends BaseActivity {
 
 				if (curUUID.tag instanceof BluetoothGattCharacteristic) {
 					BluetoothGattCharacteristic gattCharacteristic = (BluetoothGattCharacteristic) curUUID.tag;
+					bluetoothGatt.setCharacteristicNotification(gattCharacteristic, true);
 					boolean ok = bluetoothGatt.readCharacteristic(gattCharacteristic);
-					byte[] bts = gattCharacteristic.getValue();
-					AddLog("Read %s: %s", ok ? "ok" : "fail", bytes2String(bts));
+					AddLog("Read Request C %s", ok ? "ok" : "fail");
+				} else if (curUUID.tag instanceof BluetoothGattDescriptor) {
+					BluetoothGattDescriptor gattDescriptor = (BluetoothGattDescriptor) curUUID.tag;
+					boolean ok = bluetoothGatt.readDescriptor(gattDescriptor);
+					AddLog("Read Reauest D %s", ok ? "ok" : "fail");
 				}
 			}
 		});
@@ -258,11 +282,15 @@ public class MainActivity extends BaseActivity {
 			uuids.clear();
 			AddLog("Services discovered!");
 			for (BluetoothGattService ser : gatt.getServices()) {
-				uuids.add(new BLEUUID(ser.getUuid(), true, ser));
+				uuids.add(new BLEUUID(ser.getUuid(), ser));
 				for (BluetoothGattCharacteristic cs : ser.getCharacteristics()) {
-					uuids.add(new BLEUUID(cs.getUuid(), false, cs));
+					uuids.add(new BLEUUID(cs.getUuid(), cs));
+					for (BluetoothGattDescriptor ds : cs.getDescriptors()) {
+						uuids.add(new BLEUUID(cs.getUuid(), ds));
+					}
 				}
 			}
+//			bluetoothGatt.beginReliableWrite();
 			safeCall(new Callable() {
 				@Override
 				public void call(Object... args) {
@@ -276,12 +304,60 @@ public class MainActivity extends BaseActivity {
 			super.onConnectionStateChange(gatt, status, newState);
 			if (newState == BluetoothProfile.STATE_CONNECTED) {
 				AddLog("Gatt connected!");
-				if (!gatt.discoverServices()) {
-					AddLog("Discovering services...");
-				} else {
-					AddLog("Discover services failed");
-				}
+				AddLog("Discovering services...");
+				gatt.discoverServices();
 			}
+		}
+
+		@Override
+		public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
+			AddLog("onCharacteristicChanged");
+			super.onCharacteristicChanged(gatt, characteristic);
+		}
+
+		@Override
+		public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+			byte[] bts = characteristic.getValue();
+			AddLog("onCharacteristicRead %d: %s", status, bytes2String(bts) + (bts != null ? "(" + bytesDecode(bts) + ")" : ""));
+		}
+
+		@Override
+		public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
+			AddLog("onCharacteristicWrite" + status);
+			super.onCharacteristicWrite(gatt, characteristic, status);
+		}
+
+		@Override
+		public void onReadRemoteRssi(BluetoothGatt gatt, int rssi, int status) {
+			if (curBleDevice != null)
+				curBleDevice.rssi = rssi;
+			safeCall(new Callable() {
+
+				@Override
+				public void call(Object... args) {
+					deviceAdapter.notifyDataSetChanged();
+				}
+			});
+			super.onReadRemoteRssi(gatt, rssi, status);
+		}
+
+		@Override
+		public void onDescriptorRead(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+			byte[] bts = descriptor.getValue();
+			AddLog("onDescriptorRead %d: %s", status, bytes2String(bts) + (bts != null ? "(" + bytesDecode(bts) + ")" : ""));
+			super.onDescriptorRead(gatt, descriptor, status);
+		}
+
+		@Override
+		public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status) {
+			AddLog("onDescriptorWrite" + status);
+			super.onDescriptorWrite(gatt, descriptor, status);
+		}
+
+		@Override
+		public void onReliableWriteCompleted(BluetoothGatt gatt, int status) {
+			AddLog("onReliableWriteCompleted" + status);
+			super.onReliableWriteCompleted(gatt, status);
 		}
 
 	};
