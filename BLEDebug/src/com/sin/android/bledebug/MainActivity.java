@@ -360,12 +360,15 @@ public class MainActivity extends BaseActivity {
 				AddLog("Gatt connected!");
 				AddLog("Discovering services...");
 				gatt.discoverServices();
+			} else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
+				AddLog("Gatt disconnected!");
 			}
 		}
 
 		@Override
 		public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
-			AddLog("onCharacteristicChanged");
+			byte[] bts = characteristic.getValue();
+			AddLog("onCharacteristicChange: %s", bytes2String(bts) + (bts != null ? "(" + bytesDecode(bts) + ")" : ""));
 			super.onCharacteristicChanged(gatt, characteristic);
 
 			String uuid = characteristic.getUuid().toString();
