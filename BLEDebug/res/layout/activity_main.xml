@@ -6,6 +6,7 @@
     tools:context="com.sin.android.btdebug.MainActivity$PlaceholderFragment" >
 
     <TextView
+        android:id="@+id/tv_devices"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Devices"
@@ -21,6 +22,7 @@
     </ListView>
 
     <TextView
+        android:id="@+id/tv_uuids"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Services &amp; Characteristics &amp; Descriptors"
@@ -37,7 +39,7 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="40dp"
         android:layout_margin="1dp"
         android:background="@drawable/shap_border"
         android:orientation="horizontal" >
@@ -49,20 +51,30 @@
             android:layout_weight="1"
             android:background="@null"
             android:padding="2dp"
-            android:text="A1 00 00 00" >
+            android:text="A1 00 00 00"
+            android:textSize="14sp" >
         </EditText>
+
+        <Button
+            android:id="@+id/btn_notify"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:text="N"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_send"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="W" />
+            android:layout_height="match_parent"
+            android:text="W"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/btn_read"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="R" />
+            android:layout_height="match_parent"
+            android:text="R"
+            android:textSize="14sp" />
     </LinearLayout>
 
     <ScrollView

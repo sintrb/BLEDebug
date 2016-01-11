@@ -3,6 +3,7 @@ package com.sin.android.bledebug;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.TimerTask;
 
 import android.app.ProgressDialog;
 import android.bluetooth.BluetoothAdapter;
@@ -16,7 +17,9 @@ import android.bluetooth.BluetoothProfile;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.Menu;
@@ -54,7 +57,7 @@ public class MainActivity extends BaseActivity {
 
 	BluetoothGatt bluetoothGatt = null;
 
-	String bytes2String(byte[] bts) {
+	public static String bytes2String(byte[] bts) {
 		if (bts == null)
 			return "null";
 		StringBuffer sb = new StringBuffer();
@@ -66,7 +69,7 @@ public class MainActivity extends BaseActivity {
 		return sb.toString();
 	}
 
-	String bytesDecode(byte[] bts) {
+	public static String bytesDecode(byte[] bts) {
 		return bts != null ? new String(bts) : "null";
 	}
 
@@ -101,19 +104,25 @@ public class MainActivity extends BaseActivity {
 				return convertView;
 			}
 		});
-
+		final float scale = this.getResources().getDisplayMetrics().density;
 		uuidsAdapter = new SimpleListAdapter(this, uuids, new SimpleViewInitor() {
 			@Override
 			public View initView(Context context, int position, View convertView, ViewGroup parent, Object data) {
 				if (convertView == null) {
-					convertView = new TextView(MainActivity.this);
-					convertView.setTag("tt:{.m:toString}");
+					convertView = LinearLayout.inflate(MainActivity.this, R.layout.item_node, null);
 				}
 				if (data == curUUID) {
 					convertView.setBackgroundColor(0x80808080);
 				} else {
 					convertView.setBackgroundColor(0x00000000);
 				}
+				BLEUUID u = (BLEUUID) data;
+				int lv = u.getLevel();
+				convertView.setPadding((int) (lv * 15 * scale), 0, 0, 0);
+				((TextView) convertView.findViewById(R.id.tv_value)).setTextColor((System.currentTimeMillis() - u.lasttime) < 2000 ? Color.RED : Color.BLACK);
+				convertView.findViewById(R.id.tv_value).setVisibility(u.value == null ? View.GONE : View.VISIBLE);
+				convertView.findViewById(R.id.v_left).setVisibility(lv == 0 ? View.GONE : View.VISIBLE);
+
 				render.renderView(convertView, data);
 				return convertView;
 			}
@@ -140,14 +149,6 @@ public class MainActivity extends BaseActivity {
 				if (pos < uuids.size()) {
 					curUUID = uuids.get(pos);
 					uuidsAdapter.notifyDataSetChanged();
-
-					if (curUUID.tag instanceof BluetoothGattService) {
-						BluetoothGattService gattService = (BluetoothGattService) curUUID.tag;
-						// gattService.
-						// AddLog("Read %s: %s", ok ? "ok" : "fail",
-						// bytes2String(bts) + (bts != null ? "(" +
-						// bytesDecode(bts) + ")" : ""));
-					}
 				}
 			}
 		});
@@ -196,10 +197,10 @@ public class MainActivity extends BaseActivity {
 						ok = bluetoothGatt.writeDescriptor(gattDescriptor) && ok;
 						AddLog("Send D %s: %s", ok ? "ok" : "fail", bytes2String(bts));
 					}
-//					if (!ok)
-//						bluetoothGatt.abortReliableWrite();
-//					else
-//						bluetoothGatt.beginReliableWrite();
+					// if (!ok)
+					// bluetoothGatt.abortReliableWrite();
+					// else
+					// bluetoothGatt.beginReliableWrite();
 				}
 			}
 		});
@@ -209,7 +210,7 @@ public class MainActivity extends BaseActivity {
 			@Override
 			public void onClick(View arg0) {
 				if (curUUID == null || bluetoothGatt == null) {
-					AddLog("Must select a Characteristic!");
+					AddLog("Must select a item!");
 					return;
 				}
 				if (curUUID.tag instanceof BluetoothGattService) {
@@ -230,7 +231,60 @@ public class MainActivity extends BaseActivity {
 			}
 		});
 
+		findViewById(R.id.btn_notify).setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				enableNotify(curUUID.tag);
+			}
+		});
+
 		searchDevice();
+
+		new TimerTask() {
+
+			@Override
+			public void run() {
+				// TODO Auto-generated method stub
+
+			}
+		};
+
+		findViewById(R.id.tv_devices).setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				View v = findViewById(R.id.lv_devices);
+				if (v.getVisibility() == View.VISIBLE) {
+					v.setVisibility(View.GONE);
+				} else {
+					v.setVisibility(View.VISIBLE);
+				}
+			}
+		});
+
+		findViewById(R.id.tv_uuids).setOnClickListener(new View.OnClickListener() {
+
+			@Override
+			public void onClick(View arg0) {
+				View v = findViewById(R.id.lv_uuids);
+				if (v.getVisibility() == View.VISIBLE) {
+					v.setVisibility(View.GONE);
+				} else {
+					v.setVisibility(View.VISIBLE);
+				}
+			}
+		});
+
+		final Handler handler = new Handler();
+		handler.postDelayed(new Runnable() {
+
+			@Override
+			public void run() {
+				uuidsAdapter.notifyDataSetChanged();
+				handler.postDelayed(this, 2000);
+			}
+		}, 2000);
 	}
 
 	private void AddLog(String ftm, Object... args) {
@@ -290,7 +344,7 @@ public class MainActivity extends BaseActivity {
 					}
 				}
 			}
-//			bluetoothGatt.beginReliableWrite();
+			// bluetoothGatt.beginReliableWrite();
 			safeCall(new Callable() {
 				@Override
 				public void call(Object... args) {
@@ -313,12 +367,40 @@ public class MainActivity extends BaseActivity {
 		public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic) {
 			AddLog("onCharacteristicChanged");
 			super.onCharacteristicChanged(gatt, characteristic);
+
+			String uuid = characteristic.getUuid().toString();
+			for (BLEUUID u : uuids) {
+				if (u.tag instanceof BluetoothGattCharacteristic && uuid.equals(((BluetoothGattCharacteristic) u.tag).getUuid().toString())) {
+					u.value = characteristic.getValue();
+					u.lasttime = System.currentTimeMillis();
+				}
+			}
+			safeCall(new Callable() {
+				@Override
+				public void call(Object... args) {
+					uuidsAdapter.notifyDataSetChanged();
+				}
+			});
 		}
 
 		@Override
 		public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status) {
 			byte[] bts = characteristic.getValue();
 			AddLog("onCharacteristicRead %d: %s", status, bytes2String(bts) + (bts != null ? "(" + bytesDecode(bts) + ")" : ""));
+
+			String uuid = characteristic.getUuid().toString();
+			for (BLEUUID u : uuids) {
+				if (u.tag instanceof BluetoothGattCharacteristic && uuid.equals(((BluetoothGattCharacteristic) u.tag).getUuid().toString())) {
+					u.value = characteristic.getValue();
+					u.lasttime = System.currentTimeMillis();
+				}
+			}
+			safeCall(new Callable() {
+				@Override
+				public void call(Object... args) {
+					uuidsAdapter.notifyDataSetChanged();
+				}
+			});
 		}
 
 		@Override
@@ -346,6 +428,20 @@ public class MainActivity extends BaseActivity {
 			byte[] bts = descriptor.getValue();
 			AddLog("onDescriptorRead %d: %s", status, bytes2String(bts) + (bts != null ? "(" + bytesDecode(bts) + ")" : ""));
 			super.onDescriptorRead(gatt, descriptor, status);
+
+			String uuid = descriptor.getUuid().toString();
+			for (BLEUUID u : uuids) {
+				if (u.tag instanceof BluetoothGattDescriptor && uuid.equals(((BluetoothGattDescriptor) u.tag).getUuid().toString())) {
+					u.value = descriptor.getValue();
+					u.lasttime = System.currentTimeMillis();
+				}
+			}
+			safeCall(new Callable() {
+				@Override
+				public void call(Object... args) {
+					uuidsAdapter.notifyDataSetChanged();
+				}
+			});
 		}
 
 		@Override
@@ -361,6 +457,18 @@ public class MainActivity extends BaseActivity {
 		}
 
 	};
+
+	void enableNotify(Object obj) {
+		if (obj instanceof BluetoothGattCharacteristic) {
+			BluetoothGattCharacteristic cs = (BluetoothGattCharacteristic) obj;
+			bluetoothGatt.setCharacteristicNotification(cs, true);
+			AddLog("notify enable of Characteristic");
+		} else if (obj instanceof BluetoothGattDescriptor) {
+			BluetoothGattDescriptor ds = (BluetoothGattDescriptor) obj;
+			ds.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
+			bluetoothGatt.writeDescriptor(ds);
+		}
+	}
 
 	void disconnectDevice() {
 		if (bluetoothGatt != null) {
