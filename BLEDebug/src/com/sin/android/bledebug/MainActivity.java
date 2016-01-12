@@ -250,31 +250,26 @@ public class MainActivity extends BaseActivity {
 			}
 		};
 
-		findViewById(R.id.tv_devices).setOnClickListener(new View.OnClickListener() {
-
+		View.OnClickListener tagclk = new View.OnClickListener() {
 			@Override
-			public void onClick(View arg0) {
-				View v = findViewById(R.id.lv_devices);
+			public void onClick(View view) {
+				View v = (View) view.getTag();
+				TextView tv = (TextView) view;
 				if (v.getVisibility() == View.VISIBLE) {
 					v.setVisibility(View.GONE);
+					tv.setText(tv.getText() + ">>");
 				} else {
 					v.setVisibility(View.VISIBLE);
+					tv.setText(tv.getText().toString().replace(">", ""));
 				}
 			}
-		});
+		};
 
-		findViewById(R.id.tv_uuids).setOnClickListener(new View.OnClickListener() {
+		findViewById(R.id.tv_devices).setTag(findViewById(R.id.lv_devices));
+		findViewById(R.id.tv_devices).setOnClickListener(tagclk);
 
-			@Override
-			public void onClick(View arg0) {
-				View v = findViewById(R.id.lv_uuids);
-				if (v.getVisibility() == View.VISIBLE) {
-					v.setVisibility(View.GONE);
-				} else {
-					v.setVisibility(View.VISIBLE);
-				}
-			}
-		});
+		findViewById(R.id.tv_uuids).setTag(findViewById(R.id.lv_uuids));
+		findViewById(R.id.tv_uuids).setOnClickListener(tagclk);
 
 		final Handler handler = new Handler();
 		handler.postDelayed(new Runnable() {
@@ -283,6 +278,9 @@ public class MainActivity extends BaseActivity {
 			public void run() {
 				uuidsAdapter.notifyDataSetChanged();
 				handler.postDelayed(this, 2000);
+
+				if (bluetoothGatt != null)
+					bluetoothGatt.readRemoteRssi();
 			}
 		}, 2000);
 	}
